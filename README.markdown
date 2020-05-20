@@ -103,7 +103,7 @@ $destination = new DestinationPost();
 // map
 $mapper->map($source, $destination);
 
-echo destination->description; // outputs 'Symfony2 developer'
+echo $destination->description; // outputs 'Symfony2 developer'
 ```
 
 ### Route members
@@ -127,7 +127,7 @@ $destination = new DestinationPost();
 // map
 $mapper->map($source, $destination);
 
-echo destination->title; // outputs 'AutoMapper Bundle'
+echo $destination->title; // outputs 'AutoMapper Bundle'
 ```
 
 Note that if `title` or `name` is private, it will try to use getter and setter to route the member.
@@ -157,7 +157,7 @@ $destination = new DestinationPost();
 // map
 $mapper->map($source, $destination);
 
-echo destination->title; // outputs 'AUTOMAPPER BUNDLE'
+echo $destination->title; // outputs 'AUTOMAPPER BUNDLE'
 ```
 
 ### Map a graph
@@ -183,10 +183,37 @@ $mapper = new Mapper();
 // map
 $mapper->map($source, $destination);
 
-echo destination->author; // outputs 'Michel'
+echo $destination->author; // outputs 'Michel'
 ```
 
 Note that if there are private members, it will try to use getter and setter to route the member.
+
+#### Use Symfony Expression Language
+
+If you want to define how properties are accessed, use **Expression** field accessor:
+You can read all [documentation about ExpressionLanguage](http://symfony.com/doc/current/components/expression_language/index.html).
+
+``` php
+<?php
+
+// get mapper
+$mapper = $container->get('bcc_auto_mapper.mapper');
+// create default map and override members
+$mapper->createMap('My\SourcePost', 'My\DestinationPost')
+       ->forMember('author', new Expression('author.getFullName()'));
+
+// create objects
+$source = new SourcePost();
+$source->author = new SourceAuthor();
+$source->author->name = 'Michel';
+$destination = new DestinationPost();
+$mapper = new Mapper();
+
+// map
+$mapper->map($source, $destination);
+
+echo destination->author; // outputs 'Michel'
+```
 
 ### Map to a constant
 
@@ -211,7 +238,64 @@ $destination = new DestinationPost();
 // map
 $mapper->map($source, $destination);
 
-echo destination->title; // outputs 'Constant title'
+echo $destination->title; // outputs 'Constant title'
+```
+
+### Deep object mapping
+
+You can map a specific member to a constant:
+
+``` php
+<?php
+
+use BCC\AutoMapperBundle\Mapper\FieldAccessor\Constant;
+
+// get mapper
+$mapper = $container->get('bcc_auto_mapper.mapper');
+// create default map
+$mapper->createMap('My\SourcePost', 'My\DestinationPost');
+// Set property deep mapping
+$mapper->filter('author', new ObjectMappingFilter('My\DestinationAuthor'));
+
+// create objects
+$source = new SourcePost();
+$source->author = new SourceAuthor();
+$destination = new DestinationPost();
+
+// map
+$mapper->map($source, $destination);
+
+echo get_class(destination->author); // outputs 'My\DestinationAuthor'
+```
+
+### Deep array object mapping
+
+You can map a specific member to a constant:
+
+``` php
+<?php
+
+use BCC\AutoMapperBundle\Mapper\FieldAccessor\Constant;
+
+// get mapper
+$mapper = $container->get('bcc_auto_mapper.mapper');
+// create default map
+$mapper->createMap('My\SourcePost', 'My\DestinationPost');
+// Set property deep mapping
+$mapper->filter('comments', new ArrayObjectMappingFilter('My\DestinationComment'));
+
+// create objects
+$source = new SourcePost();
+$source->comments = array(
+    new SourceComment(),
+    new SourceComment(),
+);
+$destination = new DestinationPost();
+
+// map
+$mapper->map($source, $destination);
+
+echo get_class(destination->comments[0]); // outputs 'My\DestinationComment'
 ```
 
 ### Apply a filter
@@ -237,7 +321,7 @@ $destination = new DestinationPost();
 // map
 $mapper->map($source, $destination);
 
-echo destination->title; // outputs 'Default title'
+echo $destination->title; // outputs 'Default title'
 ```
 
 ## Register a map
@@ -295,7 +379,7 @@ $destination = new DestinationPost();
 // map
 $mapper->map($source, $destination);
 
-echo destination->title; // outputs 'AutoMapper Bundle'
+echo $destination->title; // outputs 'AutoMapper Bundle'
 ```
 
 ## Ignore a field
@@ -319,7 +403,7 @@ $destination = new DestinationPost();
 // map
 $mapper->map($source, $destination);
 
-var_dump(destination->description); // ignored, will be null
+var_dump($destination->description); // ignored, will be null
 ```
 
 ## Do not overwrite already set field
@@ -344,5 +428,30 @@ $destination->description = 'Foo bar';
 // map
 $mapper->map($source, $destination);
 
-var_dump(destination->description); // will be 'Foo bar'
+var_dump($destination->description); // will be 'Foo bar'
+```
+
+## Skip null
+
+You can skip a field that is null.
+
+``` php
+<?php
+
+// get mapper
+$mapper = $container->get('bcc_auto_mapper.mapper');
+// create default map
+$mapper->createMap('My\SourcePost', 'My\DestinationPost')
+       ->setSkipNull(true);
+
+// create objects
+$source = new SourcePost();
+$source->description = null;
+$destination = new DestinationPost();
+$destination->description = 'Foo bar';
+
+// map
+$mapper->map($source, $destination);
+
+var_dump($destination->description); // will be 'Foo bar'
 ```
